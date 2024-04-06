@@ -24,7 +24,7 @@ class FeedbackController extends Controller
             'title' => 'required',
             'description' => 'required',
             'category' => 'required',
-        ]);
+        ]); 
         $title = $request->title;
         $description =  $request->description;
         $category = $request->category;
