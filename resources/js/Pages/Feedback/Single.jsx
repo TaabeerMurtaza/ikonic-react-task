@@ -1,36 +1,32 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head } from '@inertiajs/react';
 import { useState, useEffect } from 'react';
+import { Editor } from "react-draft-wysiwyg";
+import { convertToHTML } from 'draft-convert';
+import "react-draft-wysiwyg/dist/react-draft-wysiwyg.css";
 import moment from 'moment';
 
 export default function Single({ auth, feedback, csrf }) {
     const [comments, setComments] = useState([]);
     const [formData, setFormData] = useState({
         feedback_id: feedback.id,
-        text: ''
+        editorState: null // Initialize editorState
     });
     useEffect(() => {
         setComments(feedback.comments);
     }, []);
 
-
-    const handleChange = (e) => {
-        setFormData({
-            ...formData,
-            [e.target.name]: e.target.value
-        });
-    };
-
     const handleSubmit = async (e) => {
         e.preventDefault();
         try {
+            const htmlContent = convertToHTML(formData.editorState.getCurrentContent());
             const response = await fetch('/feedback/comment', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'X-CSRF-TOKEN': csrf
                 },
-                body: JSON.stringify(formData)
+                body: JSON.stringify({ ...formData, text: htmlContent })
             });
             if (!response.ok) {
                 throw new Error('Failed to submit comment');
@@ -41,7 +37,7 @@ export default function Single({ auth, feedback, csrf }) {
             // Reset form data after submission
             setFormData({
                 ...formData,
-                text: ''
+                editorState: null // Reset editorState
             });
         } catch (error) {
             console.error('Error submitting comment:', error);
@@ -77,7 +73,7 @@ export default function Single({ auth, feedback, csrf }) {
                                     <div className="card mb-2" key={comment.id}>
                                         <div className="card-body">
                                             <h5 className="card-title">{comment.user.name}</h5>
-                                            <p className="card-text">{comment.text}</p>
+                                            <div className="card-text" dangerouslySetInnerHTML={{ __html: comment.text }}></div>
                                             <p className="card-text text-muted">{moment(comment.created_at).fromNow()}</p>
                                         </div>
                                     </div>
@@ -89,7 +85,11 @@ export default function Single({ auth, feedback, csrf }) {
                         <form onSubmit={handleSubmit}>
                             <div className="mb-3">
                                 <label htmlFor="comment" className="form-label">Add Comment</label>
-                                <textarea className="form-control" id="comment" name='text' rows="3" value={formData.text} onChange={handleChange}></textarea>
+                                <Editor
+                                    editorClassName="form-control"
+                                    editorState={formData.editorState}
+                                    onEditorStateChange={(editorState) => setFormData({ ...formData, editorState })}
+                                />
                             </div>
                             <button type="submit" className="btn btn-primary">Submit</button>
                         </form>
